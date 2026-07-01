@@ -711,6 +711,10 @@ function clearCancel(){
 
 // ── EXCEL EXPORT
 function exportExcel(){
+  if(typeof XLSX==='undefined'){
+    alert('The Excel library is still loading — please wait a moment and try again.');
+    return;
+  }
   const truck=document.getElementById('ex-truck').value;
   const from=document.getElementById('ex-from').value;
   const to=document.getElementById('ex-to').value;
@@ -729,24 +733,22 @@ function exportExcel(){
       'Release Medic':e.releaseMedic||'','Release Date/Time':fmtTs(e.releaseTs),
       'Accept Medic':e.acceptMedic||'','Accept Date/Time':fmtTs(e.acceptTs),
       'Turnover (min)':diff!==null?diff:'',
-      'Status':st.label,'Dept/Service':"O'Fallon – Shiloh EMS",'Box Contents':narcStr
+      'Status':st.label,'Dept/Service':"O'Fallon - Shiloh EMS",'Box Contents':narcStr
     };
   });
 
   const ws=XLSX.utils.json_to_sheet(rows);
   ws['!cols']=[{wch:12},{wch:10},{wch:7},{wch:18},{wch:18},{wch:18},{wch:18},{wch:14},{wch:22},{wch:20},{wch:46}];
 
-  // Color red rows using cell styles (xlsx community edition basic support)
+  // Audit flag column
   const range=XLSX.utils.decode_range(ws['!ref']);
+  ws[XLSX.utils.encode_cell({r:0,c:11})]={v:'Audit Flag',t:'s'};
   for(let r=1;r<=range.e.r;r++){
     const statusCell=ws[XLSX.utils.encode_cell({r,c:8})];
     if(statusCell&&(statusCell.v.includes('Late')||statusCell.v.includes('Pending')||statusCell.v.includes('No Sig'))){
-      // Flag in a separate column for auditors
-      ws[XLSX.utils.encode_cell({r,c:11})]={v:'⚠ REVIEW REQUIRED',t:'s'};
+      ws[XLSX.utils.encode_cell({r,c:11})]={v:'REVIEW REQUIRED',t:'s'};
     }
   }
-  // Add header for flag col
-  ws[XLSX.utils.encode_cell({r:0,c:11})]={v:'Audit Flag',t:'s'};
   ws['!cols'].push({wch:20});
 
   // Summary sheet
@@ -762,9 +764,18 @@ function exportExcel(){
   XLSX.utils.book_append_sheet(wb,ws,'Custody Log');
   XLSX.utils.book_append_sheet(wb,ws2,'Summary by Unit');
 
+  // Blob-based download — works on local files, GitHub Pages, and mobile
+  const wbout=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const blob=new Blob([wbout],{type:'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
   const lbl=truck?truck.replace(/\s/g,'_'):'AllUnits';
   const dRange=from&&to?`_${from}_to_${to}`:'';
-  XLSX.utils.writeFile(wb,`OEMS_NarcLog_${lbl}${dRange}.xlsx`);
+  a.href=url;
+  a.download=`OEMS_NarcLog_${lbl}${dRange}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
 }
 
 // ── INIT
