@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>O'Fallon EMS – Narcotic Tracking</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <style>
 :root {
   --navy:#1F3864;--navy2:#2e4f8a;--red:#B22222;--red2:#d9534f;
@@ -132,7 +132,7 @@ canvas.sig{display:block;width:100%;height:100px;touch-action:none}
     <button class="tbtn tbtn-outline" onclick="showView('log')">📋 Log</button>
     <button class="tbtn tbtn-outline" onclick="showView('sign')">✍ Sign In/Out</button>
     <button class="tbtn tbtn-outline" onclick="requireAdmin('settings')">⚙ Settings</button>
-    <button class="tbtn tbtn-gold" onclick="requireAdmin('export')">⬇ Export</button>
+    <button class="tbtn tbtn-gold" onclick="requireAdmin('export')">⬇ Export CSV</button>
   </div>
 </div>
 
@@ -330,7 +330,7 @@ canvas.sig{display:block;width:100%;height:100px;touch-action:none}
       </div>
     </div>
     <div class="actions">
-      <button class="btn btn-navy" onclick="exportExcel()">⬇ Download Excel</button>
+      <button class="btn btn-navy" onclick="exportExcel()">⬇ Download CSV (opens in Excel)</button>
       <button class="btn btn-outline" onclick="showView('log')">← Back</button>
     </div>
   </div>
@@ -709,12 +709,24 @@ function clearCancel(){
   document.getElementById('clear-step1').style.display='block';
 }
 
-// ── EXCEL EXPORT
+// ── CSV EXPORT (no library — works everywhere)
+function csvEscape(v){
+  if(v===null||v===undefined)return'';
+  const s=String(v);
+  if(s.includes(',')||s.includes('"')||s.includes('\n'))return'"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function csvRow(arr){return arr.map(csvEscape).join(',');}
+function downloadCSV(content, filename){
+  const blob=new Blob(['\uFEFF'+content],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
+}
+
 function exportExcel(){
-  if(typeof XLSX==='undefined'){
-    alert('The Excel library is still loading — please wait a moment and try again.');
-    return;
-  }
   const truck=document.getElementById('ex-truck').value;
   const from=document.getElementById('ex-from').value;
   const to=document.getElementById('ex-to').value;
@@ -724,58 +736,40 @@ function exportExcel(){
   if(to)entries=entries.filter(e=>e.date<=to);
   if(!entries.length){alert('No entries match these filters.');return;}
 
-  const narcStr=db.narcs.map(n=>`${n.drug} x${n.qty}`).join(', ');
-  const rows=entries.map(e=>{
+  const narcStr=db.narcs.map(n=>`${n.drug} x${n.qty}`).join(' | ');
+
+  // ── Main custody log sheet
+  const headers=['Date','Unit','Box #','Release Medic','Release Date/Time',
+    'Accept Medic','Accept Date/Time','Turnover (min)','Status','Audit Flag',
+    'Dept/Service','Box Contents'];
+  const dataRows=entries.map(e=>{
     const st=getStatus(e);
-    const diff=e.releaseTs&&e.acceptTs?Math.round((new Date(e.acceptTs)-new Date(e.releaseTs))/60000):null;
-    return{
-      'Date':fmtDate(e.date),'Unit':e.truck,'Box #':e.box,
-      'Release Medic':e.releaseMedic||'','Release Date/Time':fmtTs(e.releaseTs),
-      'Accept Medic':e.acceptMedic||'','Accept Date/Time':fmtTs(e.acceptTs),
-      'Turnover (min)':diff!==null?diff:'',
-      'Status':st.label,'Dept/Service':"O'Fallon - Shiloh EMS",'Box Contents':narcStr
-    };
+    const diff=e.releaseTs&&e.acceptTs?Math.round((new Date(e.acceptTs)-new Date(e.releaseTs))/60000):'';
+    const flag=st.warn?'REVIEW REQUIRED':'';
+    return[fmtDate(e.date),e.truck,e.box,
+      e.releaseMedic||'',fmtTs(e.releaseTs),
+      e.acceptMedic||'',fmtTs(e.acceptTs),
+      diff,st.label,flag,
+      "O'Fallon - Shiloh EMS",narcStr];
   });
 
-  const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[{wch:12},{wch:10},{wch:7},{wch:18},{wch:18},{wch:18},{wch:18},{wch:14},{wch:22},{wch:20},{wch:46}];
+  let csv=csvRow(headers)+'\n';
+  csv+=dataRows.map(csvRow).join('\n');
 
-  // Audit flag column
-  const range=XLSX.utils.decode_range(ws['!ref']);
-  ws[XLSX.utils.encode_cell({r:0,c:11})]={v:'Audit Flag',t:'s'};
-  for(let r=1;r<=range.e.r;r++){
-    const statusCell=ws[XLSX.utils.encode_cell({r,c:8})];
-    if(statusCell&&(statusCell.v.includes('Late')||statusCell.v.includes('Pending')||statusCell.v.includes('No Sig'))){
-      ws[XLSX.utils.encode_cell({r,c:11})]={v:'REVIEW REQUIRED',t:'s'};
-    }
-  }
-  ws['!cols'].push({wch:20});
-
-  // Summary sheet
-  const sumRows=db.trucks.map(t=>{
+  // ── Summary block appended after a blank line
+  csv+='\n\n';
+  csv+=csvRow(['SUMMARY BY UNIT','','',''])+'\n';
+  csv+=csvRow(['Unit','Total Entries','Flagged Entries','Flag Rate'])+'\n';
+  db.trucks.forEach(t=>{
     const te=db.entries.filter(e=>e.truck===t);
     const warn=te.filter(e=>getStatus(e).warn).length;
-    return{'Unit':t,'Total Entries':te.length,'Flagged Entries':warn,'Flag Rate':te.length?Math.round(warn/te.length*100)+'%':'0%'};
+    const rate=te.length?Math.round(warn/te.length*100)+'%':'0%';
+    csv+=csvRow([t,te.length,warn,rate])+'\n';
   });
-  const ws2=XLSX.utils.json_to_sheet(sumRows);
-  ws2['!cols']=[{wch:12},{wch:14},{wch:16},{wch:12}];
 
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Custody Log');
-  XLSX.utils.book_append_sheet(wb,ws2,'Summary by Unit');
-
-  // Blob-based download — works on local files, GitHub Pages, and mobile
-  const wbout=XLSX.write(wb,{bookType:'xlsx',type:'array'});
-  const blob=new Blob([wbout],{type:'application/octet-stream'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
   const lbl=truck?truck.replace(/\s/g,'_'):'AllUnits';
   const dRange=from&&to?`_${from}_to_${to}`:'';
-  a.href=url;
-  a.download=`OEMS_NarcLog_${lbl}${dRange}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
+  downloadCSV(csv,`OEMS_NarcLog_${lbl}${dRange}.csv`);
 }
 
 // ── INIT
