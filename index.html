@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O'Fallon EMS – Narcotic Tracking</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy:#1F3864;--navy2:#2e4f8a;--red:#B22222;--red2:#d9534f;
+  --gold:#c8a84b;--bg:#f0f2f8;--white:#fff;--border:#cdd1de;
+  --text:#1a1a2e;--muted:#6b7280;
+  --green:#16a34a;--yellow:#d97706;--orange:#ea580c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.topbar{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.topbar .star{font-size:28px;color:var(--gold);flex-shrink:0}
+.topbar h1{font-size:15px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.topbar p{font-size:11px;color:#a8b8d8}
+.topbar-btns{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.tbtn{padding:6px 14px;border-radius:5px;font-size:12px;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;border:none;letter-spacing:.04em;transition:background .15s}
+.tbtn-outline{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.5)}
+.tbtn-outline:hover{background:rgba(255,255,255,.12)}
+.tbtn-gold{background:var(--gold);color:#1a1a2e}
+.tbtn-gold:hover{background:#b8962a}
+
+.view{display:none;padding:20px;max-width:920px;margin:0 auto}
+.view.active{display:block}
+
+.card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:24px;box-shadow:0 2px 12px rgba(31,56,100,.08);margin-bottom:20px}
+.card-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--navy);border-bottom:2px solid var(--navy);padding-bottom:6px;margin-bottom:16px}
+
+.fg{display:grid;gap:12px 16px;margin-bottom:14px}
+.fg2{grid-template-columns:1fr 1fr}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
+
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field select,.field input{border:1px solid var(--border);border-radius:5px;padding:8px 10px;font-size:13px;font-family:Arial,sans-serif;color:var(--text);background:var(--white);width:100%}
+.field select:focus,.field input:focus{outline:none;border-color:var(--navy2);box-shadow:0 0 0 2px rgba(31,56,100,.12)}
+
+.sig-wrap{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.sig-hdr{background:var(--navy);color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:7px 12px;display:flex;justify-content:space-between;align-items:center}
+.sig-hdr button{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:10px;padding:2px 8px;border-radius:3px;cursor:pointer;font-family:Arial,sans-serif}
+.sig-hdr button:hover{background:rgba(255,255,255,.32)}
+.sig-canvas-area{background:#fafbff;position:relative;cursor:crosshair}
+canvas.sig{display:block;width:100%;height:100px;touch-action:none}
+.sig-ph{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#c8cdd8;font-size:12px;pointer-events:none;white-space:nowrap}
+.sig-meta{background:#f3f5fb;border-top:1px solid var(--border);padding:8px 12px;display:flex;gap:12px}
+.sig-meta .field{flex:1}
+.ts-display{font-size:11px;color:var(--muted);font-style:italic;padding-top:5px;font-weight:700;min-height:28px}
+
+.narc-header-box{background:var(--navy);color:#fff;border-radius:8px;padding:14px 18px;margin-bottom:18px}
+.narc-header-box h3{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.narc-pills{display:flex;flex-wrap:wrap;gap:8px}
+.narc-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:5px 12px;font-size:12px}
+.narc-pill span{font-weight:700;color:var(--gold)}
+.dept-line{font-size:11px;color:#a8b8d8;margin-top:8px}
+
+.log-table{width:100%;border-collapse:collapse;font-size:12px}
+.log-table th{background:var(--navy);color:#fff;padding:8px 10px;font-size:10px;letter-spacing:.07em;text-transform:uppercase;text-align:left}
+.log-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.log-table tr:hover td{background:#f0f4ff}
+.warn-row td{background:#fff1f2 !important;border-left:3px solid var(--red)}
+
+.badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.badge-green{background:#dcfce7;color:var(--green)}
+.badge-yellow{background:#fef9c3;color:var(--yellow)}
+.badge-red{background:#fee2e2;color:var(--red)}
+.badge-orange{background:#ffedd5;color:var(--orange)}
+
+.btn{padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;border:none;transition:background .15s;letter-spacing:.04em}
+.btn:active{transform:scale(.97)}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-navy:hover{background:var(--navy2)}
+.btn-red{background:var(--red);color:#fff}
+.btn-outline{background:#fff;color:var(--navy);border:2px solid var(--navy)}
+.btn-outline:hover{background:#f0f3fa}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:#15803d}
+.btn-sm{padding:5px 12px;font-size:11px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:10px;padding:28px;max-width:460px;width:94%;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.modal h2{font-size:15px;color:var(--navy);margin-bottom:12px}
+.modal input{border:1px solid var(--border);border-radius:5px;padding:9px 12px;font-size:14px;font-family:Arial,sans-serif;width:100%;margin-bottom:12px}
+.modal-btns{display:flex;gap:10px}
+.modal-err{color:var(--red);font-size:12px;margin-bottom:8px;display:none}
+
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.filter-bar .field{flex:1;min-width:130px}
+
+.setting-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.setting-item:last-child{border-bottom:none}
+.setting-item input{flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 10px;font-size:13px;font-family:Arial,sans-serif}
+.setting-tag{background:var(--navy);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;min-width:70px;text-align:center;flex-shrink:0}
+
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:14px}
+.err-msg{color:var(--red);font-size:12px;margin-top:10px;display:none}
+
+.section-sep{margin:20px 0 14px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding-bottom:6px;border-bottom:2px solid}
+.sep-red{color:var(--red);border-color:var(--red)}
+.sep-green{color:var(--green);border-color:var(--green)}
+
+@media(max-width:600px){
+  .fg2,.fg3,.fg4{grid-template-columns:1fr}
+  .sig-meta{flex-direction:column}
+  .topbar h1{font-size:12px}
+  .topbar p{display:none}
+}
+@media print{
+  .topbar,.actions,.filter-bar .btn,.tbtn{display:none}
+  body{background:#fff}.card{box-shadow:none}
+  .log-table th{background:#1F3864!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="star">⚕</div>
+  <div>
+    <h1>O'Fallon EMS — Narcotic Tracking</h1>
+    <p>HSHS St. Elizabeth's Hospital EMS System</p>
+  </div>
+  <div class="topbar-btns">
+    <button class="tbtn tbtn-outline" onclick="showView('log')">📋 Log</button>
+    <button class="tbtn tbtn-outline" onclick="showView('sign')">✍ Sign In/Out</button>
+    <button class="tbtn tbtn-outline" onclick="requireAdmin('settings')">⚙ Settings</button>
+    <button class="tbtn tbtn-gold" onclick="requireAdmin('export')">⬇ Export</button>
+  </div>
+</div>
+
+<!-- ══ SIGN VIEW ══ -->
+<div id="view-sign" class="view active">
+  <div class="card">
+    <div class="card-title">Narcotic Custody Entry</div>
+
+    <div class="narc-header-box">
+      <h3>Dept/Service: O'Fallon – Shiloh EMS</h3>
+      <div class="narc-pills" id="narc-pills-display"></div>
+      <div class="dept-line">Verify quantities against physical count before signing</div>
+    </div>
+
+    <div class="fg fg2">
+      <div class="field">
+        <label>Ambulance / Unit</label>
+        <select id="s-truck"><option value="">— Select Unit —</option></select>
+      </div>
+      <div class="field">
+        <label>Box #</label>
+        <input type="text" id="s-box" placeholder="e.g. 17">
+      </div>
+    </div>
+
+    <!-- RELEASE -->
+    <div class="section-sep sep-red">Release — Outgoing Medic</div>
+    <div class="fg fg2">
+      <div class="field">
+        <label>Releasing Medic</label>
+        <select id="s-rel-medic"><option value="">— Select Medic —</option></select>
+      </div>
+      <div class="field">
+        <label>Release Timestamp</label>
+        <div class="ts-display" id="rel-ts">Will stamp on first pen stroke</div>
+      </div>
+    </div>
+    <div class="sig-wrap">
+      <div class="sig-hdr">Release Signature <button onclick="clearSig(1)">Clear</button></div>
+      <div class="sig-canvas-area">
+        <canvas class="sig" id="sig1" width="800" height="200"></canvas>
+        <span class="sig-ph" id="ph1">Sign here to release narcotics</span>
+      </div>
+    </div>
+
+    <!-- ACCEPT -->
+    <div class="section-sep sep-green" style="margin-top:24px">Accept — Incoming Medic</div>
+    <div class="fg fg2">
+      <div class="field">
+        <label>Accepting Medic</label>
+        <select id="s-acc-medic"><option value="">— Select Medic —</option></select>
+      </div>
+      <div class="field">
+        <label>Accept Timestamp</label>
+        <div class="ts-display" id="acc-ts">Will stamp on first pen stroke</div>
+      </div>
+    </div>
+    <div class="sig-wrap">
+      <div class="sig-hdr">Accept Signature <button onclick="clearSig(2)">Clear</button></div>
+      <div class="sig-canvas-area">
+        <canvas class="sig" id="sig2" width="800" height="200"></canvas>
+        <span class="sig-ph" id="ph2">Sign here to accept narcotics</span>
+      </div>
+    </div>
+
+    <div class="err-msg" id="submit-err"></div>
+    <div class="actions">
+      <button class="btn btn-navy" onclick="submitEntry()">✔ Save Entry</button>
+      <button class="btn btn-outline" onclick="resetSignForm()">↺ Clear Form</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOG VIEW ══ -->
+<div id="view-log" class="view">
+  <div class="card">
+    <div class="card-title">Custody Log</div>
+    <div class="filter-bar">
+      <div class="field">
+        <label>Unit</label>
+        <select id="f-truck" onchange="renderLog()"><option value="">All Units</option></select>
+      </div>
+      <div class="field">
+        <label>From</label>
+        <input type="date" id="f-from" onchange="renderLog()">
+      </div>
+      <div class="field">
+        <label>To</label>
+        <input type="date" id="f-to" onchange="renderLog()">
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="clearFilters()">Clear</button>
+      <button class="btn btn-outline btn-sm" onclick="window.print()">🖨 Print</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Unit</th>
+            <th>Box</th>
+            <th>Release Medic</th>
+            <th>Release Time</th>
+            <th>Accept Medic</th>
+            <th>Accept Time</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS VIEW ══ -->
+<div id="view-settings" class="view">
+  <div class="card">
+    <div class="card-title">Narcotic Box Contents</div>
+    <div id="narc-list"></div>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-navy btn-sm" onclick="addNarc()">+ Add Drug</button>
+      <button class="btn btn-green btn-sm" onclick="saveNarcs()">Save Changes</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Unit / Truck List</div>
+    <div id="truck-list"></div>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-navy btn-sm" onclick="addTruck()">+ Add Unit</button>
+      <button class="btn btn-green btn-sm" onclick="saveTrucks()">Save Changes</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Employee / Medic List</div>
+    <div id="emp-list"></div>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-navy btn-sm" onclick="addEmp()">+ Add Employee</button>
+      <button class="btn btn-green btn-sm" onclick="saveEmps()">Save Changes</button>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn btn-outline" onclick="showView('log')">← Back to Log</button>
+  </div>
+</div>
+
+<!-- ══ EXPORT VIEW ══ -->
+<div id="view-export" class="view">
+  <div class="card">
+    <div class="card-title">Export to Excel</div>
+    <div class="fg fg3">
+      <div class="field">
+        <label>Unit (blank = all)</label>
+        <select id="ex-truck"><option value="">All Units</option></select>
+      </div>
+      <div class="field">
+        <label>Date From</label>
+        <input type="date" id="ex-from">
+      </div>
+      <div class="field">
+        <label>Date To</label>
+        <input type="date" id="ex-to">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-navy" onclick="exportExcel()">⬇ Download Excel</button>
+      <button class="btn btn-outline" onclick="showView('log')">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD MODAL -->
+<div class="modal-bg" id="pw-modal">
+  <div class="modal">
+    <h2>🔒 Admin Access Required</h2>
+    <div class="modal-err" id="pw-err">Incorrect password.</div>
+    <input type="password" id="pw-input" placeholder="Enter admin password"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <div class="modal-btns">
+      <button class="btn btn-navy" onclick="checkPw()">Unlock</button>
+      <button class="btn btn-outline" onclick="closePw()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPLETE ACCEPT MODAL -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal" style="max-width:520px;width:96%">
+    <h2>✍ Add Accept Signature</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+      This entry has a Release but no Accept. Select the incoming medic and sign below.
+    </p>
+    <div class="field" style="margin-bottom:12px">
+      <label>Accepting Medic</label>
+      <select id="edit-acc-medic"><option value="">— Select Medic —</option></select>
+    </div>
+    <div class="sig-wrap">
+      <div class="sig-hdr">Accept Signature <button onclick="clearSig(3)">Clear</button></div>
+      <div class="sig-canvas-area">
+        <canvas class="sig" id="sig3" width="800" height="180"></canvas>
+        <span class="sig-ph" id="ph3">Sign here</span>
+      </div>
+    </div>
+    <div class="err-msg" id="edit-err"></div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn btn-navy" onclick="saveEditAccept()">Save Accept</button>
+      <button class="btn btn-outline" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ADMIN_PW = 'oems2026';
+const STORE_KEY = 'oems_narcs_v2';
+
+const DEFAULT_NARCS = [
+  {drug:'Morphine Sulfate',qty:4},{drug:'Fentanyl',qty:2},
+  {drug:'Diazepam',qty:2},{drug:'Versed',qty:6},{drug:'Ketamine',qty:1}
+];
+const DEFAULT_TRUCKS = ['EMS 2','EMS 3','Medic 3','Medic 4','Medic 5','Medic 6'];
+const DEFAULT_EMPS = [
+  'Alyssa Danielson','Chase McDaniel','Chris Wilkerson','Donovan Knapp',
+  'Doug Sutphin','Jake Johnston','Jason Butler','Jay Garrett',
+  'Kayla Hoese','Kevin Brown','Luke McMinn','Marty Nungesser',
+  'Nick Grotowski','Rick Palmer','Ryan Hodge','Terry Sill'
+];
+
+function loadDB(){
+  try{const r=localStorage.getItem(STORE_KEY);if(r)return JSON.parse(r);}catch(e){}
+  return {narcs:[...DEFAULT_NARCS],trucks:[...DEFAULT_TRUCKS],employees:[...DEFAULT_EMPS],entries:[]};
+}
+function saveDB(){localStorage.setItem(STORE_KEY,JSON.stringify(db));}
+let db = loadDB();
+
+// ── VIEWS
+let pendingAdmin = null;
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  if(v==='sign'){populateDropdowns();renderNarcPills();}
+  if(v==='log'){populateFilterDropdowns();renderLog();}
+  if(v==='settings') renderSettings();
+  if(v==='export') populateExportDropdowns();
+}
+function requireAdmin(target){
+  pendingAdmin=target;
+  document.getElementById('pw-modal').classList.add('open');
+  document.getElementById('pw-input').value='';
+  document.getElementById('pw-err').style.display='none';
+  setTimeout(()=>document.getElementById('pw-input').focus(),80);
+}
+function checkPw(){
+  if(document.getElementById('pw-input').value===ADMIN_PW){
+    document.getElementById('pw-modal').classList.remove('open');
+    showView(pendingAdmin);
+  } else {
+    document.getElementById('pw-err').style.display='block';
+  }
+}
+function closePw(){document.getElementById('pw-modal').classList.remove('open');}
+
+// ── DROPDOWNS
+function populateDropdowns(){
+  fillSelect('s-truck',db.trucks,'— Select Unit —');
+  fillSelect('s-rel-medic',db.employees,'— Select Medic —');
+  fillSelect('s-acc-medic',db.employees,'— Select Medic —');
+}
+function populateFilterDropdowns(){
+  fillSelect('f-truck',db.trucks,'All Units');
+}
+function populateExportDropdowns(){
+  fillSelect('ex-truck',db.trucks,'All Units');
+}
+function fillSelect(id,arr,placeholder){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const cur=el.value;
+  el.innerHTML=`<option value="">${placeholder}</option>`;
+  arr.forEach(v=>el.add(new Option(v,v)));
+  if(cur)el.value=cur;
+}
+function renderNarcPills(){
+  const c=document.getElementById('narc-pills-display');
+  if(c) c.innerHTML=db.narcs.map(n=>`<div class="narc-pill">${n.drug} <span>Qty ${n.qty}</span></div>`).join('');
+}
+
+// ── SIGNATURE PADS
+const sigState={};
+function initSig(num){
+  const canvas=document.getElementById('sig'+num);
+  if(!canvas)return;
+  const ph=document.getElementById('ph'+num);
+  const ctx=canvas.getContext('2d');
+  sigState[num]={has:false,ts:null};
+  let drawing=false;
+
+  function getPos(e){
+    const r=canvas.getBoundingClientRect();
+    const sx=canvas.width/r.width,sy=canvas.height/r.height;
+    if(e.touches)return{x:(e.touches[0].clientX-r.left)*sx,y:(e.touches[0].clientY-r.top)*sy};
+    return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};
+  }
+  function start(e){
+    e.preventDefault();drawing=true;
+    const p=getPos(e);
+    ctx.beginPath();ctx.moveTo(p.x,p.y);
+    ctx.strokeStyle='#1a1a2e';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
+    if(!sigState[num].has){
+      ph.style.display='none';
+      sigState[num].has=true;
+      sigState[num].ts=new Date();
+      if(num===1){const el=document.getElementById('rel-ts');if(el)el.textContent=fmtTs(sigState[1].ts);}
+      if(num===2){const el=document.getElementById('acc-ts');if(el)el.textContent=fmtTs(sigState[2].ts);}
+    }
+  }
+  function draw(e){
+    if(!drawing)return;e.preventDefault();
+    const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.moveTo(p.x,p.y);
+  }
+  function stop(e){e.preventDefault();drawing=false;ctx.beginPath();}
+
+  canvas.addEventListener('mousedown',start);
+  canvas.addEventListener('mousemove',draw);
+  canvas.addEventListener('mouseup',stop);
+  canvas.addEventListener('mouseleave',stop);
+  canvas.addEventListener('touchstart',start,{passive:false});
+  canvas.addEventListener('touchmove',draw,{passive:false});
+  canvas.addEventListener('touchend',stop,{passive:false});
+}
+function clearSig(num){
+  const c=document.getElementById('sig'+num);
+  if(c)c.getContext('2d').clearRect(0,0,c.width,c.height);
+  sigState[num]={has:false,ts:null};
+  const ph=document.getElementById('ph'+num);
+  if(ph)ph.style.display='';
+  if(num===1){const el=document.getElementById('rel-ts');if(el)el.textContent='Will stamp on first pen stroke';}
+  if(num===2){const el=document.getElementById('acc-ts');if(el)el.textContent='Will stamp on first pen stroke';}
+}
+function getSig(num){
+  const c=document.getElementById('sig'+num);
+  return c&&sigState[num]?.has?c.toDataURL('image/png'):null;
+}
+
+// ── FORMAT HELPERS
+function fmtTs(d){
+  if(!d)return'—';
+  const dt=new Date(d);
+  return dt.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'})+
+    ' '+dt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});}
+
+// ── SUBMIT
+function submitEntry(){
+  const truck=document.getElementById('s-truck').value;
+  const box=document.getElementById('s-box').value.trim();
+  const relMedic=document.getElementById('s-rel-medic').value;
+  const accMedic=document.getElementById('s-acc-medic').value;
+  const errEl=document.getElementById('submit-err');
+  errEl.style.display='none';
+
+  if(!truck){showErr(errEl,'Please select a unit.');return;}
+  if(!box){showErr(errEl,'Please enter the box number.');return;}
+  if(!sigState[1]?.has&&!sigState[2]?.has){showErr(errEl,'At least one signature is required.');return;}
+  if(sigState[1]?.has&&!relMedic){showErr(errEl,'Please select the releasing medic.');return;}
+  if(sigState[2]?.has&&!accMedic){showErr(errEl,'Please select the accepting medic.');return;}
+
+  db.entries.unshift({
+    id:Date.now().toString(),
+    date:new Date().toISOString().split('T')[0],
+    truck,box,
+    releaseMedic:relMedic||'',
+    releaseTs:sigState[1]?.has?sigState[1].ts?.toISOString():null,
+    releaseSig:getSig(1),
+    acceptMedic:accMedic||'',
+    acceptTs:sigState[2]?.has?sigState[2].ts?.toISOString():null,
+    acceptSig:getSig(2)
+  });
+  saveDB();
+  resetSignForm();
+  showView('log');
+}
+function showErr(el,msg){el.textContent=msg;el.style.display='block';}
+function resetSignForm(){
+  ['s-truck','s-rel-medic','s-acc-medic'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-box').value='';
+  clearSig(1);clearSig(2);
+  document.getElementById('submit-err').style.display='none';
+}
+
+// ── STATUS
+function getStatus(e){
+  if(!e.releaseTs&&!e.acceptTs)return{label:'No Signatures',cls:'badge-red',warn:true};
+  if(!e.acceptTs)return{label:'Pending Accept',cls:'badge-red',warn:true};
+  if(!e.releaseTs)return{label:'Accept Only',cls:'badge-orange',warn:false};
+  const diff=(new Date(e.acceptTs)-new Date(e.releaseTs))/60000;
+  if(diff<0)return{label:'Out of Order',cls:'badge-orange',warn:true};
+  if(diff<=15)return{label:'On Time ('+Math.round(diff)+'m)',cls:'badge-green',warn:false};
+  if(diff<=60)return{label:'Delayed ('+Math.round(diff)+'m)',cls:'badge-yellow',warn:false};
+  return{label:'Late ('+Math.round(diff)+'m)',cls:'badge-red',warn:true};
+}
+
+// ── RENDER LOG
+function renderLog(){
+  populateFilterDropdowns();
+  const fTruck=document.getElementById('f-truck')?.value||'';
+  const fFrom=document.getElementById('f-from')?.value||'';
+  const fTo=document.getElementById('f-to')?.value||'';
+  let entries=[...db.entries];
+  if(fTruck)entries=entries.filter(e=>e.truck===fTruck);
+  if(fFrom)entries=entries.filter(e=>e.date>=fFrom);
+  if(fTo)entries=entries.filter(e=>e.date<=fTo);
+
+  const tbody=document.getElementById('log-body');
+  if(!entries.length){
+    tbody.innerHTML='<tr><td colspan="9"><div class="empty">No entries found.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML=entries.map(e=>{
+    const st=getStatus(e);
+    const relTime=e.releaseTs?fmtTs(e.releaseTs):'<em style="color:var(--muted)">—</em>';
+    const accTime=e.acceptTs?fmtTs(e.acceptTs):'<em style="color:var(--muted)">—</em>';
+    const relName=e.releaseMedic||'<em style="color:var(--muted)">None</em>';
+    const accName=e.acceptMedic||'<em style="color:var(--muted)">None</em>';
+    const canComplete=!e.acceptTs;
+    return`<tr class="${st.warn?'warn-row':''}">
+      <td>${fmtDate(e.date)}</td>
+      <td><strong>${e.truck}</strong></td>
+      <td>${e.box}</td>
+      <td>${relName}</td>
+      <td style="font-size:11px">${relTime}</td>
+      <td>${accName}</td>
+      <td style="font-size:11px">${accTime}</td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td>${canComplete?`<button class="btn btn-outline btn-sm" onclick="openEdit('${e.id}')">+ Accept</button>`:''}</td>
+    </tr>`;
+  }).join('');
+}
+function clearFilters(){
+  ['f-truck','f-from','f-to'].forEach(id=>document.getElementById(id).value='');
+  renderLog();
+}
+
+// ── EDIT MODAL
+let editId=null;
+function openEdit(id){
+  editId=id;
+  document.getElementById('edit-modal').classList.add('open');
+  fillSelect('edit-acc-medic',db.employees,'— Select Medic —');
+  clearSig(3);
+  document.getElementById('edit-err').style.display='none';
+}
+function closeEdit(){document.getElementById('edit-modal').classList.remove('open');clearSig(3);editId=null;}
+function saveEditAccept(){
+  const medic=document.getElementById('edit-acc-medic').value;
+  const err=document.getElementById('edit-err');
+  if(!medic){showErr(err,'Please select a medic.');return;}
+  if(!sigState[3]?.has){showErr(err,'Please sign to accept.');return;}
+  const entry=db.entries.find(e=>e.id===editId);
+  if(entry){
+    entry.acceptMedic=medic;
+    entry.acceptTs=sigState[3].ts?.toISOString()||new Date().toISOString();
+    entry.acceptSig=getSig(3);
+    saveDB();
+  }
+  closeEdit();renderLog();
+}
+
+// ── SETTINGS
+function renderSettings(){
+  document.getElementById('narc-list').innerHTML=db.narcs.map((n,i)=>`
+    <div class="setting-item">
+      <span class="setting-tag">Drug ${i+1}</span>
+      <input type="text" value="${n.drug}" id="nd-${i}" placeholder="Drug name">
+      <input type="number" value="${n.qty}" id="nq-${i}" placeholder="Qty" style="max-width:70px">
+      <button class="btn btn-red btn-sm" onclick="removeNarc(${i})">✕</button>
+    </div>`).join('');
+
+  document.getElementById('truck-list').innerHTML=db.trucks.map((t,i)=>`
+    <div class="setting-item">
+      <span class="setting-tag">Unit ${i+1}</span>
+      <input type="text" value="${t}" id="tr-${i}" placeholder="Unit name">
+      <button class="btn btn-red btn-sm" onclick="removeTruck(${i})">✕</button>
+    </div>`).join('');
+
+  document.getElementById('emp-list').innerHTML=db.employees.map((e,i)=>`
+    <div class="setting-item">
+      <span class="setting-tag">Medic ${i+1}</span>
+      <input type="text" value="${e}" id="em-${i}" placeholder="Employee name">
+      <button class="btn btn-red btn-sm" onclick="removeEmp(${i})">✕</button>
+    </div>`).join('');
+}
+function addNarc(){db.narcs.push({drug:'',qty:0});renderSettings();}
+function addTruck(){db.trucks.push('');renderSettings();}
+function addEmp(){db.employees.push('');renderSettings();}
+function removeNarc(i){if(confirm('Remove this drug?')){db.narcs.splice(i,1);saveDB();renderSettings();}}
+function removeTruck(i){if(confirm('Remove this unit?')){db.trucks.splice(i,1);saveDB();renderSettings();}}
+function removeEmp(i){if(confirm('Remove this employee?')){db.employees.splice(i,1);saveDB();renderSettings();}}
+function saveNarcs(){
+  db.narcs=db.narcs.map((_,i)=>({drug:document.getElementById('nd-'+i).value,qty:parseInt(document.getElementById('nq-'+i).value)||0}));
+  saveDB();renderNarcPills();alert('Narcotic list saved.');
+}
+function saveTrucks(){
+  db.trucks=db.trucks.map((_,i)=>document.getElementById('tr-'+i).value).filter(Boolean);
+  saveDB();alert('Truck list saved.');
+}
+function saveEmps(){
+  db.employees=db.employees.map((_,i)=>document.getElementById('em-'+i).value).filter(Boolean).sort();
+  saveDB();alert('Employee list saved.');
+}
+
+// ── EXCEL EXPORT
+function exportExcel(){
+  const truck=document.getElementById('ex-truck').value;
+  const from=document.getElementById('ex-from').value;
+  const to=document.getElementById('ex-to').value;
+  let entries=[...db.entries];
+  if(truck)entries=entries.filter(e=>e.truck===truck);
+  if(from)entries=entries.filter(e=>e.date>=from);
+  if(to)entries=entries.filter(e=>e.date<=to);
+  if(!entries.length){alert('No entries match these filters.');return;}
+
+  const narcStr=db.narcs.map(n=>`${n.drug} x${n.qty}`).join(', ');
+  const rows=entries.map(e=>{
+    const st=getStatus(e);
+    const diff=e.releaseTs&&e.acceptTs?Math.round((new Date(e.acceptTs)-new Date(e.releaseTs))/60000):null;
+    return{
+      'Date':fmtDate(e.date),'Unit':e.truck,'Box #':e.box,
+      'Release Medic':e.releaseMedic||'','Release Date/Time':fmtTs(e.releaseTs),
+      'Accept Medic':e.acceptMedic||'','Accept Date/Time':fmtTs(e.acceptTs),
+      'Turnover (min)':diff!==null?diff:'',
+      'Status':st.label,'Dept/Service':"O'Fallon – Shiloh EMS",'Box Contents':narcStr
+    };
+  });
+
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:10},{wch:7},{wch:18},{wch:18},{wch:18},{wch:18},{wch:14},{wch:22},{wch:20},{wch:46}];
+
+  // Color red rows using cell styles (xlsx community edition basic support)
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  for(let r=1;r<=range.e.r;r++){
+    const statusCell=ws[XLSX.utils.encode_cell({r,c:8})];
+    if(statusCell&&(statusCell.v.includes('Late')||statusCell.v.includes('Pending')||statusCell.v.includes('No Sig'))){
+      // Flag in a separate column for auditors
+      ws[XLSX.utils.encode_cell({r,c:11})]={v:'⚠ REVIEW REQUIRED',t:'s'};
+    }
+  }
+  // Add header for flag col
+  ws[XLSX.utils.encode_cell({r:0,c:11})]={v:'Audit Flag',t:'s'};
+  ws['!cols'].push({wch:20});
+
+  // Summary sheet
+  const sumRows=db.trucks.map(t=>{
+    const te=db.entries.filter(e=>e.truck===t);
+    const warn=te.filter(e=>getStatus(e).warn).length;
+    return{'Unit':t,'Total Entries':te.length,'Flagged Entries':warn,'Flag Rate':te.length?Math.round(warn/te.length*100)+'%':'0%'};
+  });
+  const ws2=XLSX.utils.json_to_sheet(sumRows);
+  ws2['!cols']=[{wch:12},{wch:14},{wch:16},{wch:12}];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Custody Log');
+  XLSX.utils.book_append_sheet(wb,ws2,'Summary by Unit');
+
+  const lbl=truck?truck.replace(/\s/g,'_'):'AllUnits';
+  const dRange=from&&to?`_${from}_to_${to}`:'';
+  XLSX.utils.writeFile(wb,`OEMS_NarcLog_${lbl}${dRange}.xlsx`);
+}
+
+// ── INIT
+initSig(1);initSig(2);initSig(3);
+populateDropdowns();renderNarcPills();
+</script>
+</body>
+</html>
