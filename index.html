@@ -273,6 +273,39 @@ canvas.sig{display:block;width:100%;height:100px;touch-action:none}
       <button class="btn btn-green btn-sm" onclick="saveEmps()">Save Changes</button>
     </div>
   </div>
+  <!-- DANGER ZONE -->
+  <div class="card" style="border:2px solid var(--red)">
+    <div class="card-title" style="color:var(--red);border-color:var(--red)">⚠ Danger Zone — Clear Test Data</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+      Permanently deletes <strong>all custody log entries</strong>. Settings (drugs, trucks, employees) are preserved.
+      Use this after testing to start with a clean log. This cannot be undone.
+    </p>
+    <!-- Step 1 -->
+    <div id="clear-step1">
+      <button class="btn btn-red" onclick="clearStep1()">🗑 Clear All Log Entries…</button>
+    </div>
+    <!-- Step 2 -->
+    <div id="clear-step2" style="display:none;background:#fff1f2;border:1px solid #fca5a5;border-radius:8px;padding:16px;margin-top:4px">
+      <p style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px">⚠ Are you sure? This will delete ALL entries from the log permanently.</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-red" onclick="clearStep2()">Yes, delete all entries</button>
+        <button class="btn btn-outline" onclick="clearCancel()">Cancel</button>
+      </div>
+    </div>
+    <!-- Step 3 — type confirm -->
+    <div id="clear-step3" style="display:none;background:#fff1f2;border:1px solid #fca5a5;border-radius:8px;padding:16px;margin-top:4px">
+      <p style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px">Final confirmation — type <strong>CLEAR</strong> in the box below:</p>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input type="text" id="clear-confirm-input" placeholder="Type CLEAR here" style="border:2px solid var(--red);border-radius:5px;padding:8px 10px;font-size:13px;font-family:Arial,sans-serif;max-width:200px">
+        <button class="btn btn-red" onclick="clearStep3()">Confirm Delete</button>
+        <button class="btn btn-outline" onclick="clearCancel()">Cancel</button>
+      </div>
+      <div id="clear-confirm-err" style="color:var(--red);font-size:12px;margin-top:8px;display:none">You must type CLEAR exactly to proceed.</div>
+    </div>
+    <!-- Done message -->
+    <div id="clear-done" style="display:none;color:var(--green);font-size:13px;font-weight:700;margin-top:8px">✔ All log entries cleared. Settings and lists have been preserved.</div>
+  </div>
+
   <div class="actions">
     <button class="btn btn-outline" onclick="showView('log')">← Back to Log</button>
   </div>
@@ -641,6 +674,39 @@ function saveTrucks(){
 function saveEmps(){
   db.employees=db.employees.map((_,i)=>document.getElementById('em-'+i).value).filter(Boolean).sort();
   saveDB();alert('Employee list saved.');
+}
+
+// ── CLEAR ALL ENTRIES
+function clearStep1(){
+  document.getElementById('clear-step1').style.display='none';
+  document.getElementById('clear-step2').style.display='block';
+}
+function clearStep2(){
+  document.getElementById('clear-step2').style.display='none';
+  document.getElementById('clear-step3').style.display='block';
+  document.getElementById('clear-confirm-input').value='';
+  document.getElementById('clear-confirm-err').style.display='none';
+  setTimeout(()=>document.getElementById('clear-confirm-input').focus(),80);
+}
+function clearStep3(){
+  const val=document.getElementById('clear-confirm-input').value.trim();
+  if(val!=='CLEAR'){
+    document.getElementById('clear-confirm-err').style.display='block';
+    return;
+  }
+  db.entries=[];
+  saveDB();
+  document.getElementById('clear-step3').style.display='none';
+  document.getElementById('clear-done').style.display='block';
+  setTimeout(()=>{
+    document.getElementById('clear-done').style.display='none';
+    document.getElementById('clear-step1').style.display='block';
+  },3000);
+}
+function clearCancel(){
+  document.getElementById('clear-step2').style.display='none';
+  document.getElementById('clear-step3').style.display='none';
+  document.getElementById('clear-step1').style.display='block';
 }
 
 // ── EXCEL EXPORT
