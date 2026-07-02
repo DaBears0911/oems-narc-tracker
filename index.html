@@ -564,7 +564,9 @@ function getStatus(e){
   if(diff<0)return{label:'Out of Order',cls:'badge-orange',warn:true};
   if(diff<=15)return{label:'On Time ('+Math.round(diff)+'m)',cls:'badge-green',warn:false};
   if(diff<=60)return{label:'Delayed ('+Math.round(diff)+'m)',cls:'badge-yellow',warn:false};
-  return{label:'Late ('+Math.round(diff)+'m)',cls:'badge-red',warn:true};
+  const h=Math.floor(diff/60),m=Math.round(diff%60);
+  const hm=h+'h'+(m>0?' '+m+'m':'');
+  return{label:'Late ('+hm+')',cls:'badge-red',warn:true};
 }
 
 // ── RENDER LOG
