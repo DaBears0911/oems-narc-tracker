@@ -1,0 +1,53 @@
+{
+  "settings": {
+    "narcs": [
+      {
+        "drug": "Morphine Sulfate",
+        "qty": 4
+      },
+      {
+        "drug": "Fentanyl",
+        "qty": 2
+      },
+      {
+        "drug": "Diazepam",
+        "qty": 2
+      },
+      {
+        "drug": "Versed",
+        "qty": 6
+      },
+      {
+        "drug": "Ketamine",
+        "qty": 1
+      }
+    ],
+    "trucks": [
+      "EMS 2",
+      "EMS 3",
+      "Medic 3",
+      "Medic 4",
+      "Medic 5",
+      "Medic 6"
+    ],
+    "employees": [
+      "Alyssa Danielson",
+      "Chase McDaniel",
+      "Chris Wilkerson",
+      "Donovan Knapp",
+      "Doug Sutphin",
+      "Jake Johnston",
+      "Jason Butler",
+      "Jay Garrett",
+      "Kayla Hoese",
+      "Kevin Brown",
+      "Luke McMinn",
+      "Marty Nungesser",
+      "Nick Grotowski",
+      "Rick Palmer",
+      "Ryan Hodge",
+      "Terry Sill"
+    ]
+  },
+  "entries": []
+}
