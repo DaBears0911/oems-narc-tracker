@@ -59,5 +59,22 @@
       "Tony Mannino"
     ]
   },
-  "entries": []
+  "entries": [
+    {
+      "id": "1784047336719",
+      "date": "2026-07-14",
+      "truck": "Medic 5",
+      "box": "54",
+      "medic": "Jim Holley",
+      "signOutTs": "2026-07-14T16:42:05.418Z",
+      "signInTs": null,
+      "notes": "",
+      "run": "",
+      "flagged": false,
+      "resolutionNote": "",
+      "resolvedBy": "",
+      "resolvedTs": null,
+      "carryover": false
+    }
+  ]
 }
