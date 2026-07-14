@@ -506,11 +506,12 @@ const DEFAULT_EMPS = [
   'Nick Grotowski','Rick Palmer','Ryan Hodge','Terry Sill'
 ];
 
-// ══════════════════════════════════════════════════════════════
-// GITHUB API
-// ══════════════════════════════════════════════════════════════
-let dataFileSha = null;
-let db = null;
+// Initialize db to defaults immediately — overwritten by GitHub data on load
+// This prevents null-reference crashes if the API is slow or fails
+let db = {
+  settings: { narcs: [...DEFAULT_NARCS], trucks: [...DEFAULT_TRUCKS], employees: [...DEFAULT_EMPS] },
+  entries: []
+};
 
 async function ghGet(path) {
   const r = await fetch(`${API}/${path}`, {
@@ -553,20 +554,34 @@ function ghDecode(raw) {
   return decodeURIComponent(escape(atob(raw.replace(/\n/g,''))));
 }
 
+// ══════════════════════════════════════════════════════════════
+// GITHUB API
+// ══════════════════════════════════════════════════════════════
+let dataFileSha = null;
+
 async function loadDB() {
   showLoading('Loading narcotic log…');
   try {
     const file = await ghGet('data.json');
     if (!file) {
-      // First time — create default
-      db = { settings: { narcs: DEFAULT_NARCS, trucks: DEFAULT_TRUCKS, employees: DEFAULT_EMPS }, entries: [] };
+      // First run — push defaults to GitHub
       await saveDB('Initial setup');
     } else {
       dataFileSha = file.sha;
-      db = JSON.parse(ghDecode(file.content));
+      const parsed = JSON.parse(ghDecode(file.content));
+      // Merge — keep defaults if GitHub data is missing sections
+      db = {
+        settings: {
+          narcs:      parsed.settings?.narcs      || DEFAULT_NARCS,
+          trucks:     parsed.settings?.trucks     || DEFAULT_TRUCKS,
+          employees:  parsed.settings?.employees  || DEFAULT_EMPS
+        },
+        entries: parsed.entries || []
+      };
     }
   } catch(e) {
-    alert('Error loading data: ' + e.message);
+    // Show a visible banner but keep db at defaults so the UI still works
+    showBanner('⚠ Could not connect to GitHub — working offline with defaults. (' + e.message + ')');
   }
   hideLoading();
 }
@@ -1375,6 +1390,18 @@ async function runExport() {
 // ══════════════════════════════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════════════════════════════
+function showBanner(msg) {
+  let b = document.getElementById('err-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'err-banner';
+    b.style.cssText = 'background:#fff1f2;border-bottom:2px solid #B22222;color:#B22222;font-size:12px;font-weight:700;padding:10px 18px;text-align:center;position:sticky;top:56px;z-index:99';
+    document.body.insertBefore(b, document.body.firstChild.nextSibling);
+  }
+  b.textContent = msg;
+  b.style.display = 'block';
+}
+
 function fmtTs(d) {
   if (!d) return '—';
   const dt = new Date(d);
