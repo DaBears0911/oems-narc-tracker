@@ -70,10 +70,10 @@
       "signInTs": null,
       "notes": "Nick Fensom witnessed",
       "run": "",
-      "flagged": false,
-      "resolutionNote": "",
-      "resolvedBy": "",
-      "resolvedTs": null,
+      "flagged": true,
+      "resolutionNote": "Discrepancy investigated Mike Gretz used on call 26-1234",
+      "resolvedBy": "Jim Holley",
+      "resolvedTs": "2026-07-16T11:27:44.144Z",
       "carryover": false
     },
     {
