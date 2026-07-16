@@ -61,6 +61,22 @@
   },
   "entries": [
     {
+      "id": "1784201117854",
+      "date": "2026-07-16",
+      "truck": "EMS 2",
+      "box": "36",
+      "medic": "April Thomason",
+      "signOutTs": "2026-07-16T11:25:15.407Z",
+      "signInTs": null,
+      "notes": "",
+      "run": "",
+      "flagged": false,
+      "resolutionNote": "",
+      "resolvedBy": "",
+      "resolvedTs": null,
+      "carryover": false
+    },
+    {
       "id": "1784122459640",
       "date": "2026-07-15",
       "truck": "Medic 4",
