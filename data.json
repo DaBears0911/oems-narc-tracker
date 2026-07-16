@@ -61,6 +61,22 @@
   },
   "entries": [
     {
+      "id": "1784201183406",
+      "date": "2026-07-16",
+      "truck": "Medic 3",
+      "box": "60",
+      "medic": "Alyssa Danielson",
+      "signOutTs": "2026-07-16T11:26:05.210Z",
+      "signInTs": null,
+      "notes": "Nick Fensom witnessed",
+      "run": "",
+      "flagged": false,
+      "resolutionNote": "",
+      "resolvedBy": "",
+      "resolvedTs": null,
+      "carryover": false
+    },
+    {
       "id": "1784201117854",
       "date": "2026-07-16",
       "truck": "EMS 2",
