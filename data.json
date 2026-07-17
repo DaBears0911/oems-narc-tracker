@@ -61,6 +61,22 @@
   },
   "entries": [
     {
+      "id": "1784297988998",
+      "date": "2026-07-17",
+      "truck": "Medic 4",
+      "box": "54",
+      "medic": "Chase McDaniel",
+      "signOutTs": "2026-07-17T14:19:46.615Z",
+      "signInTs": null,
+      "notes": "",
+      "run": "",
+      "flagged": false,
+      "resolutionNote": "",
+      "resolvedBy": "",
+      "resolvedTs": null,
+      "carryover": false
+    },
+    {
       "id": "1784206336875",
       "date": "2026-07-16",
       "truck": "Medic 6",
