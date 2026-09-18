@@ -61,6 +61,22 @@
   },
   "entries": [
     {
+      "id": "1789746243620",
+      "date": "2026-09-18",
+      "truck": "Medic 3",
+      "box": "37",
+      "medic": "Jason Butler",
+      "signOutTs": "2026-09-18T15:44:00.613Z",
+      "signInTs": null,
+      "notes": "",
+      "run": "",
+      "flagged": false,
+      "resolutionNote": "",
+      "resolvedBy": "",
+      "resolvedTs": null,
+      "carryover": false
+    },
+    {
       "id": "1784731412296",
       "date": "2026-07-22",
       "truck": "Medic 3",
